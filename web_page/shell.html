@@ -4,7 +4,10 @@
 <head>
     <meta charset="utf-8">
     <title>Tidal Simulation</title>
+
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap');
+
         html,
         body {
             margin: 0;
@@ -12,37 +15,452 @@
             background: #000;
             overflow: hidden;
             height: 100%;
-        }
 
-        body {
             display: flex;
+            flex-direction: row-reverse;
             justify-content: flex-start;
             align-items: bottom;
         }
+
 
         canvas#canvas {
             display: block;
         }
 
-        #sidebar {
+
+
+        .sidebar {
             background: #2f2f2f;
-            flex: 1;
             height: 100%;
             box-sizing: border-box;
-            border-left: 4px solid #6f6f6f;
+            border: 4px solid #6f6f6f;
+            overflow-y: auto;
+            padding: 12px;
+            font-family: 'Open Sans', sans-serif;
+            color: #e0e0e0;
+
+            display: flex;
+            flex-direction: column;
+            justify-content: top;
+            gap: 8px;
+        }
+
+        #camera_menu {
+            position: absolute;
+            right: 0px;
+            bottom: 0px;
+            height: 340px;
+            width: 200px;
+            margin: 12px;
+
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        #canvas_shell {
+            display: block;
+        }
+
+        #touchpad {
+            width: 200px;
+            height: 200px;
+            background: none;
+
+            border: 3px solid #4a90d9;
+            border-radius: 12px;
+            touch-action: none;
+            cursor: grab;
+            user-select: none;
+
+            display: grid;
+            place-items: center;
+
+        }
+
+        #touchpad.moving {
+            background-color: #4a90d9;
+        }
+
+
+        .zoom_btn {
+            display: grid;
+            place-items: center;
+            border: 3px solid #4a90d9;
+            border-radius: 12px;
+            background: none;
+            height: 100%;
+            width: 48%;
+            cursor: pointer;
+        }
+
+        .zoom_btn:active {
+            background: #4a90d9;
+        }
+
+        #zoom_menu {
+            width: 200px;
+            height: 60px;
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #home {
+            display: grid;
+            place-items: center;
+            border: 3px solid #4a90d9;
+            border-radius: 12px;
+            background: none;
+            width: 200px;
+            height: 60px;
+            cursor: pointer;
+        }
+
+
+        .icon {
+            height: auto;
+            aspect-ratio: 1;
+            position: relative;
+            -webkit-user-drag: none;
+            aspect-ratio: 1;
+        }
+
+        #touchpad:active {
+            cursor: grabbing;
+        }
+
+        .control {
+            margin-bottom: 8px;
+        }
+
+        .control label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 2px;
+        }
+
+        .control label span.value {
+            color: #9fd0ff;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .control input[type="range"] {
+            width: 100%;
+            accent-color: #4a90d9;
+        }
+
+        #reset_btn {
+            display: block;
+            width: 100%;
+            margin-bottom: 16px;
+            padding: 8px;
+            background: #3f3f3f;
+            color: #e0e0e0;
+            border: 1px solid #6f6f6f;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        #reset_btn:hover {
+            background: #4a4a4a;
+        }
+
+        #reset_btn:active {
+            background: #333333;
+        }
+
+        .description {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 4px;
+            margin-bottom: 8px;
+        }
+
+        .switch_row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .switch_row label.switch_label {
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 46px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background-color: #3f3f3f;
+            border: 1px solid #6f6f6f;
+            border-radius: 24px;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .slider::before {
+            content: "";
+            position: absolute;
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: #e0e0e0;
+            border-radius: 50%;
+            transition: transform 0.2s ease;
+        }
+
+        .switch input:checked+.slider {
+            background-color: #4a90d9;
+            border-color: #4a90d9;
+        }
+
+        .switch input:checked+.slider::before {
+            transform: translateY(-50%) translateX(20px);
         }
     </style>
 
 </head>
 
 <body>
+    <div id="canvas_shell">
+        <div id="camera_menu">
+            <div id="touchpad"><img src="graphics/rotate.svg" alt="Rotate" class="icon" style="width: 80px;"></div>
+            <div id="zoom_menu">
+                <button id="zoom_in" class="zoom_btn"><img src="graphics/zoom_in.svg" alt="Zoom in" class="icon"
+                        style="width: 30px;"></button>
+                <button id="zoom_out" class="zoom_btn"><img src="graphics/zoom_out.svg" alt="Zoom out" class="icon"
+                        style="width: 30px;"></button>
+            </div>
+            <button id="home"><img src="graphics/home.svg" alt="Home" class="icon" style="width: 30px;"></button>
+        </div>
+        <canvas id="canvas" width="1200" height="800" oncontextmenu="event.preventDefault()"></canvas>
+    </div>
+    <div class="sidebar" style="width: 500px; ">
+        <div class="description">Simulation settings:</div>
 
-    <canvas id="canvas" width="1200" height="800" oncontextmenu="event.preventDefault()"></canvas>
-    <div id="sidebar"></div>
+        <div class="switch_row">
+            <label for="toggle_fdir" class="switch_label">Show force direction</label>
+            <label class="switch">
+                <input type="checkbox" id="toggle_fdir">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="control">
+            <label for="planet_rad">Planet radius [×10⁸ m] <span class="value"
+                    id="planet_rad_val">0.06378</span></label>
+            <input type="range" id="planet_rad" min="0.006378" max="0.121182" step="0.0001" value="0.06378">
+        </div>
+
+        <div class="control">
+            <label for="satelite_rad">Satelite radius [×10⁸ m] <span class="value"
+                    id="satelite_rad_val">0.017374</span></label>
+            <input type="range" id="satelite_rad" min="0.0017374" max="0.0330106" step="0.00001" value="0.017374">
+        </div>
+
+        <div class="control">
+            <label for="ocean_height">Ocean height [m] <span class="value" id="ocean_height_val">3700</span></label>
+            <input type="range" id="ocean_height" min="370" max="7030" step="10" value="3700">
+        </div>
+
+        <div class="control">
+            <label for="distance">Distance sat-plan [×10⁸ m] <span class="value" id="distance_val">3.85</span></label>
+            <input type="range" id="distance" min="0.385" max="7.315" step="0.01" value="3.85">
+        </div>
+
+        <div class="control">
+            <label for="planet_mass">Planet mass[×10²² kg] <span class="value" id="planet_mass_val">597.2</span></label>
+            <input type="range" id="planet_mass" min="59.72" max="1134.68" step="1" value="597.2">
+        </div>
+
+        <div class="control">
+            <label for="satelite_mass">Satelite mass [×10²² kg] <span class="value"
+                    id="satelite_mass_val">7.35</span></label>
+            <input type="range" id="satelite_mass" min="0.735" max="13.965" step="0.01" value="7.35">
+        </div>
+
+        <div class="control">
+            <label for="ocean_scale">Ocean scale<span class="value" id="ocean_scale_val">200</span></label>
+            <input type="range" id="ocean_scale" min="20" max="380" step="1" value="200">
+        </div>
+
+        <div class="control">
+            <label for="tide_scale">Tide scale<span class="value" id="tide_scale_val">1000000</span></label>
+            <input type="range" id="tide_scale" min="100000" max="1900000" step="1000" value="1000000">
+        </div>
+
+        <div class="control">
+            <label for="time_scale">Time scale<span class="value" id="time_scale_val">100000</span></label>
+            <input type="range" id="time_scale" min="10000" max="190000" step="1000" value="100000">
+        </div>
+        <button id="reset_btn" type="button">↺ Restore defaults</button>
+    </div>
+
+
+
     <script>
         var Module = {
             canvas: document.getElementById('canvas')
         };
+
+        var DEFAULTS = {
+            planet_rad: 0.06378,
+            satelite_rad: 0.017374,
+            ocean_height: 3700,
+            distance: 3.85,
+            planet_mass: 597.2,
+            satelite_mass: 7.35,
+            ocean_scale: 200,
+            tide_scale: 1000000,
+            time_scale: 100000
+        };
+
+        var SUPERSCRIPT = { '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' };
+        function formatExp(value) {
+            if (value === 0) return '0';
+            var exp = Math.floor(Math.log10(Math.abs(value)));
+
+            if (exp >= -1 && exp <= 4) {
+                var decimals = Math.max(0, Math.min(3, 2 - exp));
+                return value.toFixed(decimals);
+            }
+
+            var mantissa = value / Math.pow(10, exp);
+            if (Math.abs(mantissa) >= 9.995) {
+                mantissa /= 10;
+                exp += 1;
+            }
+            var expStr = String(exp).split('').map(function (c) { return SUPERSCRIPT[c] || c; }).join('');
+            return mantissa.toFixed(2) + '×10' + expStr;
+        }
+
+        Module.onRuntimeInitialized = function () {
+            var setters = {
+                planet_rad: Module.cwrap('set_planet_rad', null, ['number']),
+                satelite_rad: Module.cwrap('set_satelite_rad', null, ['number']),
+                distance: Module.cwrap('set_distance', null, ['number']),
+                planet_mass: Module.cwrap('set_planet_mass', null, ['number']),
+                satelite_mass: Module.cwrap('set_satelite_mass', null, ['number']),
+                ocean_height: Module.cwrap('set_ocean_height', null, ['number']),
+                ocean_scale: Module.cwrap('set_ocean_scale', null, ['number']),
+                tide_scale: Module.cwrap('set_tide_scale', null, ['number']),
+                time_scale: Module.cwrap('set_time_scale', null, ['number'])
+            };
+
+            function applyValue(key, v) {
+                document.getElementById(key).value = v;
+                document.getElementById(key + '_val').textContent = formatExp(v);
+                setters[key](v);
+            }
+
+            Object.keys(setters).forEach(function (key) {
+                var input = document.getElementById(key);
+                applyValue(key, DEFAULTS[key]);
+                input.addEventListener('input', function () {
+                    applyValue(key, parseFloat(input.value));
+                });
+            });
+
+            document.getElementById('reset_btn').addEventListener('click', function () {
+                Object.keys(setters).forEach(function (key) {
+                    applyValue(key, DEFAULTS[key]);
+                });
+            });
+
+            var toggleFdir = Module.cwrap('toggle_fdir', null, []);
+            document.getElementById('toggle_fdir').addEventListener('change', function () {
+                toggleFdir();
+            });
+
+            var rotCam = Module.cwrap('rot_camera', null, ['number', 'number']);
+            const pad = document.getElementById('touchpad');
+            let isDragging = false;
+            let lastX = 0;
+            let lastY = 0;
+            let dx = 0;
+            let dy = 0;
+            function pointerDown(e) {
+                isDragging = true;
+                lastX = e.clientX;
+                lastY = e.clientY;
+                pad.classList.add('moving');
+            }
+
+            function pointerMove(e) {
+                if (!isDragging) return;
+                dx = e.clientX - lastX;
+                dy = e.clientY - lastY;
+                rotCam(dx, dy);
+
+                lastX = e.clientX;
+                lastY = e.clientY;
+            }
+
+            function pointerUp() {
+                isDragging = false;
+                pad.classList.remove('moving');
+            }
+
+            pad.addEventListener('mousedown', pointerDown);
+            window.addEventListener('mousemove', pointerMove);
+            window.addEventListener('mouseup', pointerUp);
+
+            var zoomCam = Module.cwrap('zoom_camera', null, ['number']);
+            var homeCam = Module.cwrap('home_pos', null, ['number']);
+
+
+            var zoomInterval = null;
+            var ZOOM_STEP = 1.5;
+            var ZOOM_PERIOD_MS = 500;
+
+            function startZoom(step) {
+                zoomCam(step);
+                zoomInterval = setInterval(function () {
+                    zoomCam(step);
+                }, ZOOM_PERIOD_MS);
+            }
+
+            function stopZoom() {
+                clearInterval(zoomInterval);
+                zoomInterval = null;
+            }
+
+            var zoomInBtn = document.getElementById('zoom_in');
+            var zoomOutBtn = document.getElementById('zoom_out');
+
+            zoomInBtn.addEventListener('mousedown', function () { startZoom(-ZOOM_STEP); });
+            zoomInBtn.addEventListener('mouseup', stopZoom);
+            zoomInBtn.addEventListener('mouseleave', stopZoom);
+
+            zoomOutBtn.addEventListener('mousedown', function () { startZoom(ZOOM_STEP); });
+            zoomOutBtn.addEventListener('mouseup', stopZoom);
+            zoomOutBtn.addEventListener('mouseleave', stopZoom);
+
+            var homeBtn = document.getElementById('home');
+            homeBtn.addEventListener('click', function () { homeCam(); });
+        };
+
+
     </script>
     {{{ SCRIPT }}}
 </body>

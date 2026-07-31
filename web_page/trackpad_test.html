@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pl">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Touchpad demo</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            padding: 40px;
+            background: #f4f4f6;
+        }
+
+        #touchpad {
+            width: 300px;
+            height: 200px;
+            background: #1e1e1e;
+            border-radius: 12px;
+            touch-action: none;
+            /* ważne dla urządzeń dotykowych - blokuje scroll/zoom */
+            cursor: grab;
+            user-select: none;
+        }
+
+        #touchpad:active {
+            cursor: grabbing;
+        }
+
+        #info {
+            font-family: monospace;
+            background: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+            white-space: pre;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="touchpad"></div>
+    <div id="info">dx: 0, dy: 0
+        total X: 0, total Y: 0</div>
+
+    <script>
+        const pad = document.getElementById('touchpad');
+        const info = document.getElementById('info');
+
+        let isDragging = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        // suma całkowitego przesunięcia (to jest to, co "zapisujemy")
+        let total = { x: 0, y: 0 };
+
+        function pointerDown(e) {
+            isDragging = true;
+            const p = getPoint(e);
+            lastX = p.x;
+            lastY = p.y;
+        }
+
+        function pointerMove(e) {
+            if (!isDragging) return;
+
+            const p = getPoint(e);
+            const dx = p.x - lastX;
+            const dy = p.y - lastY;
+
+            lastX = p.x;
+            lastY = p.y;
+
+            total.x += dx;
+            total.y += dy;
+
+            updateInfo(dx, dy);
+            saveOffset(total); // tutaj zapisujemy przesunięcie
+        }
+
+        function pointerUp() {
+            isDragging = false;
+        }
+
+        function getPoint(e) {
+            // obsługa myszy i dotyku w jednym miejscu
+            if (e.touches && e.touches.length > 0) {
+                return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+            return { x: e.clientX, y: e.clientY };
+        }
+
+        function updateInfo(dx, dy) {
+            info.textContent =
+                `dx: ${dx.toFixed(1)}, dy: ${dy.toFixed(1)}\n` +
+                `total X: ${total.x.toFixed(1)}, total Y: ${total.y.toFixed(1)}`;
+        }
+
+        // --- zapisywanie przesunięcia ---
+        function saveOffset(offset) {
+            localStorage.setItem('touchpadOffset', JSON.stringify(offset));
+        }
+
+        function loadOffset() {
+            const saved = localStorage.getItem('touchpadOffset');
+            if (saved) {
+                total = JSON.parse(saved);
+                updateInfo(0, 0);
+            }
+        }
+
+        // mysz
+        pad.addEventListener('mousedown', pointerDown);
+        window.addEventListener('mousemove', pointerMove);
+        window.addEventListener('mouseup', pointerUp);
+
+        // dotyk (telefony/tablety)
+        pad.addEventListener('touchstart', pointerDown, { passive: true });
+        window.addEventListener('touchmove', pointerMove, { passive: true });
+        window.addEventListener('touchend', pointerUp);
+
+        // wczytaj zapisaną wartość przy starcie
+        loadOffset();
+    </script>
+
+</body>
+
+</html>
