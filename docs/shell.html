@@ -22,6 +22,10 @@
             align-items: bottom;
         }
 
+        * {
+            -webkit-user-drag: none;
+        }
+
 
         canvas#canvas {
             display: block;
@@ -123,7 +127,6 @@
             height: auto;
             aspect-ratio: 1;
             position: relative;
-            -webkit-user-drag: none;
             aspect-ratio: 1;
         }
 
@@ -235,7 +238,7 @@
         }
 
         .switch input:checked+.slider::before {
-            transform: translateY(-50%) translateX(20px);
+            transform: translateY(-50%) translateX(22px);
         }
     </style>
 
@@ -430,8 +433,8 @@
 
 
             var zoomInterval = null;
-            var ZOOM_STEP = 1.5;
-            var ZOOM_PERIOD_MS = 500;
+            var ZOOM_STEP = 0.2;
+            var ZOOM_PERIOD_MS = 100;
 
             function startZoom(step) {
                 zoomCam(step);

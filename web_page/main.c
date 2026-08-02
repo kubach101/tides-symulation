@@ -127,16 +127,21 @@ vec3 orb_axis = {0.0f, 1.0f, 0.0f};
 float orb_ang = 0.0f;
 float deviation;
 float aspect;
-
 bool hide_fdir = true;
 
 vec3 ldir = {1.0f, 0.0f, 0.0f};
 // float eye_ang[2] = {M_PI / 4.0f, M_PI / 4.0f};
-float eye_ang[2] = {0.0f, 0.0f};
+float eye_ang = 0.0f;
+vec3 eye_axis = {0.0f};
 float eye_rad = 12.5f;
 bool update_vision = true;
 mat4 view, proj, proj_view;
-mat4 axis_proj, axis_view, axis_proj_view;
+mat4 indicator_proj, indicator_view, indicator_proj_view;
+
+vec3 eye_orb = {0.0f, 0.0f, 1.0f};
+vec3 eye = {0.0f, 0.0f, 12.5};
+vec3 indicator_eye = {0.0f};
+vec3 up = {0.0f, 1.0f, 0.0f};
 
 mat4 model,
     tmp, mvp;
@@ -148,7 +153,7 @@ int ocean_slices = 84;
 int trail_start_idx = 1;
 
 float zoom_speed = 2.5f;
-float rotate_speed = 25.0f * M_PI / 180.0f;
+float rot_speed = 5.0f * M_PI / 180.0f;
 
 static void update_base_h(void)
 {
@@ -183,8 +188,28 @@ EXPORT void toggle_fdir()
 
 EXPORT void rot_camera(float dx, float dy)
 {
-    eye_ang[0] += dy * 5.0f * M_PI / 180;
-    eye_ang[1] += dx * 5.0f * M_PI / 180;
+    float len = sqrtf(dx * dx + dy * dy);
+    if (len < 1e-6f)
+        return;
+
+    vec3 side;
+    glm_vec3_cross(up, eye_orb, side);
+    glm_vec3_normalize(side);
+
+    vec3 tmp2;
+    glm_vec3_scale(up, -dx, eye_axis);
+    glm_vec3_scale(side, dy, tmp2);
+    glm_vec3_add(eye_axis, tmp2, eye_axis);
+    glm_vec3_normalize(eye_axis);
+
+    eye_ang = rot_speed * len;
+
+    glm_vec3_normalize(up);
+    glm_vec3_normalize(eye_orb);
+
+    glm_vec3_rotate(up, eye_ang, eye_axis);
+    glm_vec3_rotate(eye_orb, eye_ang, eye_axis);
+
     update_vision = true;
 }
 
@@ -197,8 +222,9 @@ EXPORT void zoom_camera(float d)
 EXPORT void home_pos()
 {
     eye_rad = 12.5f;
-    eye_ang[0] = M_PI / 4.0f;
-    eye_ang[1] = M_PI / 4.0f;
+    eye_orb[0] = 0.0f;
+    eye_orb[1] = 0.0f;
+    eye_orb[2] = 1.0f;
     update_vision = true;
 }
 void main_loop(void)
@@ -216,21 +242,19 @@ void main_loop(void)
 
     if (update_vision)
     {
-        vec3 eye = {0.0f, 0.0f, eye_rad};
-        vec3 axis_eye = {0.0f, 0.0f, 2.0f};
-        glm_vec3_rotate(eye, eye_ang[0], (vec3){1.0f, 0.0f, 0.0f});
-        glm_vec3_rotate(eye, eye_ang[1], (vec3){0.0f, 1.0f, 0.0f});
-        glm_vec3_rotate(axis_eye, eye_ang[0], (vec3){1.0f, 0.0f, 0.0f});
-        glm_vec3_rotate(axis_eye, eye_ang[1], (vec3){0.0f, 1.0f, 0.0f});
-        vec3 up = {0.0f, 1.0f, 0.0f};
-        glm_vec3_rotate(up, eye_ang[0], (vec3){1.0f, 0.0f, 0.0f});
-        glm_vec3_rotate(up, eye_ang[1], (vec3){0.0f, 1.0f, 0.0f});
+
+        glm_vec3_scale_as(eye_orb, eye_rad, eye);
+        glm_vec3_scale_as(eye_orb, 2.0f, indicator_eye);
+
         glm_perspective(glm_rad(45.0f), aspect, 0.1f, 30.0f, proj);
         glm_lookat(eye, (vec3){0.0f, 0.0f, 0.0f}, up, view);
         glm_mat4_mul(proj, view, proj_view);
-        glm_perspective(glm_rad(45.0f), 1.0f, 0.05f, 5.0f, axis_proj);
-        glm_lookat(axis_eye, (vec3){0.0f, 0.0f, 0.0f}, up, axis_view);
-        glm_mat4_mul(axis_proj, axis_view, axis_proj_view);
+
+        glm_perspective(glm_rad(45.0f), 1.0f, 0.05f, 5.0f, indicator_proj);
+        glm_lookat(indicator_eye, (vec3){0.0f, 0.0f, 0.0f}, up, indicator_view);
+        glm_mat4_mul(indicator_proj, indicator_view, indicator_proj_view);
+
+        update_vision = false;
     }
 
     // rendering:
@@ -311,7 +335,7 @@ void main_loop(void)
     glViewport(width - 210, height - 210, 200, 200);
     glm_mat4_identity(model);
     glm_scale_uni(model, 0.5f);
-    glm_mat4_mul(axis_proj_view, model, mvp);
+    glm_mat4_mul(indicator_proj_view, model, mvp);
     glUseProgram(AxisProgram);
     glUniformMatrix4fv(glGetUniformLocation(AxisProgram, "uMVP"), 1, GL_FALSE, (float *)mvp);
     glBindVertexArray(axis.VAO);
@@ -319,6 +343,7 @@ void main_loop(void)
 
     glfwSwapBuffers(window);
     glfwPollEvents();
+    /*
     if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS)
     {
         eye_rad -= zoom_speed * dt;
@@ -331,24 +356,24 @@ void main_loop(void)
     }
     if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
     {
-        eye_ang[1] -= rotate_speed * dt;
+        eye_ang[1] -= rot_speed * dt;
         update_vision = true;
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
     {
-        eye_ang[1] += rotate_speed * dt;
+        eye_ang[1] += rot_speed * dt;
         update_vision = true;
     }
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
     {
-        eye_ang[0] -= rotate_speed * dt;
+        eye_ang[0] -= rot_speed * dt;
         update_vision = true;
     }
     if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
     {
-        eye_ang[0] += rotate_speed * dt;
+        eye_ang[0] += rot_speed * dt;
         update_vision = true;
-    }
+    }*/
 }
 
 int main()
