@@ -73,6 +73,7 @@ const char *DefaultFragmentShader =
     "void main(){\n"
     "    float diff = max(dot(normal, uLDir), 0.40);\n"
     "    fragCol = uCol*diff;\n"
+    "    fragCol[3] = uCol[3];\n"
     "}\n";
 
 const char *AxisVertexShader =
@@ -197,7 +198,7 @@ EXPORT void rot_camera(float dx, float dy)
     glm_vec3_normalize(side);
 
     vec3 tmp2;
-    glm_vec3_scale(up, -dx, eye_axis);
+    glm_vec3_scale(up, dx, eye_axis);
     glm_vec3_scale(side, dy, tmp2);
     glm_vec3_add(eye_axis, tmp2, eye_axis);
     glm_vec3_normalize(eye_axis);
@@ -225,8 +226,12 @@ EXPORT void home_pos()
     eye_orb[0] = 0.0f;
     eye_orb[1] = 0.0f;
     eye_orb[2] = 1.0f;
+    up[0] = 0.0f;
+    up[1] = 1.0f;
+    up[2] = 0.0f;
     update_vision = true;
 }
+
 void main_loop(void)
 {
     dt = glfwGetTime();
