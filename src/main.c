@@ -89,8 +89,7 @@ void CreateTrail(GLfloat *vertices, GLuint *indices, float end_angle, int resolu
 GLuint createShaderProgram(const char *vertexShaderSource, const char *fragmentShaderSource);
 void KeyboardButtonCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
 
-bool hide_fdir = true;
-bool update_fdir_visibility = true;
+int trail_start_idx = 0;
 int main()
 {
     unsigned int Tscale = 100000;
@@ -150,6 +149,7 @@ int main()
     float base_h = 3700.0f * OceanScale / Runit;
 
     vec3 orb_axis = {0.0f, 1.0f, 0.0f};
+
     float orb_ang = 0.0f;
     float deviation = 15.0f / 180.0f * M_PI;
 
@@ -352,22 +352,6 @@ int main()
 
             update_vision = false;
         }
-        if (update_fdir_visibility)
-        {
-            if (hide_fdir)
-            {
-                trail.vertices[6] = 0.0f;
-                trail.vertices[13] = 0.0f;
-            }
-            else
-            {
-                trail.vertices[6] = 1.0f;
-                trail.vertices[13] = 1.0f;
-            }
-            glBindBuffer(GL_ARRAY_BUFFER, trail.VBO);
-            glBufferSubData(GL_ARRAY_BUFFER, 0, trail.v_num * 7 * sizeof(GLfloat), trail.vertices);
-            update_fdir_visibility = false;
-        }
 
         // rendering:
         glViewport(0, 0, 800, 800);
@@ -428,7 +412,7 @@ int main()
         glUseProgram(AxisProgram);
         glUniformMatrix4fv(APuMVPLoc, 1, GL_FALSE, (float *)mvp);
         glBindVertexArray(trail.VAO);
-        glDrawElements(GL_LINE_STRIP, trail.i_num, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_LINE_STRIP, trail.i_num - trail_start_idx, GL_UNSIGNED_INT, (void *)(trail_start_idx * sizeof(GLuint)));
 
         // ocean:
         glm_mat4_identity(model);
@@ -447,6 +431,7 @@ int main()
         // axis:
         glDisable(GL_DEPTH_TEST);
         glDepthMask(GL_TRUE);
+
         glViewport(600, 600, 200, 200);
         glm_mat4_identity(model);
         glm_scale_uni(model, 0.5f);
@@ -636,8 +621,7 @@ void KeyboardButtonCallback(GLFWwindow *window, int key, int scancode, int actio
     case GLFW_KEY_SPACE:
         if (action == GLFW_PRESS)
         {
-            hide_fdir = !hide_fdir;
-            update_fdir_visibility = true;
+            trail_start_idx = (trail_start_idx == 1) ? 0 : 1;
         }
         break;
     default:
