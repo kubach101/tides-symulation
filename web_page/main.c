@@ -232,6 +232,11 @@ EXPORT void home_pos()
     update_vision = true;
 }
 
+EXPORT void resizeViewport(int w)
+{
+    width = w;
+    height = width * 2 / 3;
+}
 void main_loop(void)
 {
     dt = glfwGetTime();
