@@ -1,10 +1,7 @@
 <!doctype html>
-
 <html lang="pl">
   <head>
     <meta charset="utf-8" />
-
-    ```
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
@@ -38,12 +35,6 @@
         -webkit-tap-highlight-color: transparent;
       }
 
-      /*
-   * ============================================================
-   * CANVAS SHELL
-   * ============================================================
-   */
-
       #canvas_shell {
         position: relative;
 
@@ -60,23 +51,17 @@
         height: 100%;
       }
 
-      /*
-   * Wrapper ma dokładnie proporcje canvasu.
-   * Dzięki temu Home może być pozycjonowany względem
-   * faktycznego obszaru renderowania.
-   */
-
       #canvas_wrapper {
         position: relative;
 
-        width: min(100%, 150vh);
-        aspect-ratio: 3 / 2;
+        width: 100%;
+        height: 100%;
 
-        flex: 0 1 auto;
+        flex: 1 1 auto;
 
         display: flex;
-        align-items: stretch;
-        justify-content: stretch;
+        align-items: center;
+        justify-content: center;
 
         min-width: 0;
         min-height: 0;
@@ -99,18 +84,6 @@
       canvas#canvas.dragging {
         cursor: grabbing;
       }
-
-      /*
-   * ============================================================
-   * HOME
-   * ============================================================
-   *
-   * Home jest częścią overlayu canvasu.
-   * Jest przyklejony do dolnej krawędzi canvasu.
-   *
-   * Rozmiar jest zależny od szerokości canvasu:
-   * clamp(min, szerokość canvasu, max)
-   */
 
       #home {
         position: absolute;
@@ -153,12 +126,6 @@
         max-height: 100%;
       }
 
-      /*
-   * ============================================================
-   * SIDEBAR
-   * ============================================================
-   */
-
       .sidebar {
         background: #2f2f2f;
 
@@ -174,7 +141,11 @@
         font-family: "Open Sans", sans-serif;
         color: #e0e0e0;
 
-        flex-shrink: 0;
+        /* Desktop: stała szerokość panelu sterowania. */
+        flex: 0 0 400px;
+        width: 400px;
+        max-width: 400px;
+        min-width: 400px;
 
         display: flex;
         flex-direction: column;
@@ -318,12 +289,6 @@
         transform: translateY(-50%) translateX(22px);
       }
 
-      /*
-   * ============================================================
-   * MOBILE
-   * ============================================================
-   */
-
       @media (max-width: 820px), (max-aspect-ratio: 4/5) {
         html,
         body {
@@ -336,22 +301,29 @@
         }
 
         #canvas_shell {
-          flex: 0 0 auto;
+          /*
+           * Mobile: viewport zajmuje górne ~58% ekranu.
+           * Panel sterowania ma stałe ~42% wysokości i własny scroll.
+           */
+          flex: 0 0 58dvh;
 
           width: 100%;
-          height: auto;
+          height: 58dvh;
+          min-height: 0;
 
           display: flex;
-
-          align-items: stretch;
-          justify-content: stretch;
+          align-items: center;
+          justify-content: center;
         }
 
         #canvas_wrapper {
           width: 100%;
-          aspect-ratio: 3 / 2;
+          height: 100%;
 
-          flex: 0 0 auto;
+          flex: 1 1 auto;
+
+          min-width: 0;
+          min-height: 0;
         }
 
         canvas#canvas {
@@ -363,6 +335,8 @@
           right: 50%;
           left: auto;
           bottom: 2.5%;
+
+          transform: translateX(50%);
 
           width: clamp(44px, 12%, 64px);
 
@@ -378,13 +352,15 @@
         .sidebar {
           position: static;
 
-          flex: 1 1 auto;
+          flex: 0 0 42dvh;
 
-          min-height: 0;
+          height: 42dvh;
+          min-height: 42dvh;
+          max-height: 42dvh;
 
           width: 100% !important;
-
-          max-height: none;
+          min-width: 0;
+          max-width: none;
 
           border-left: none;
           border-right: none;
@@ -414,12 +390,10 @@
         }
       }
     </style>
-    ```
   </head>
 
   <body>
     <div id="canvas_shell">
-      ```
       <div id="canvas_wrapper">
         <canvas
           id="canvas"
@@ -434,7 +408,7 @@
       </div>
     </div>
 
-    <div class="sidebar" style="width: 500px">
+    <div class="sidebar">
       <div class="description">Simulation settings:</div>
 
       <div class="switch_row">
@@ -689,12 +663,14 @@
           window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
 
         var maxDpr = isCoarsePointer ? 1.5 : 2;
-
         var dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
 
+        /*
+         * Now the C function receives the real viewport dimensions.
+         * There is intentionally NO hard-coded 3:2 calculation here.
+         */
         var w = Math.max(1, Math.round(rect.width * dpr));
-
-        var h = Math.max(1, Math.floor((w * 2) / 3));
+        var h = Math.max(1, Math.round(rect.height * dpr));
 
         if (canvas.width === w && canvas.height === h) {
           return;
@@ -708,17 +684,11 @@
         }
 
         try {
-          resizeViewportFn(w);
+          resizeViewportFn(w, h);
         } catch (e) {
           console.error("resizeViewport call failed:", e);
         }
       }
-
-      /*
-       * ============================================================
-       * EMSCRIPTEN
-       * ============================================================
-       */
 
       Module.onRuntimeInitialized = function () {
         var setters = {
@@ -767,12 +737,6 @@
             });
           });
 
-        /*
-         * ========================================================
-         * FORCE DIRECTION
-         * ========================================================
-         */
-
         var toggleFdir = Module.cwrap("toggle_fdir", null, []);
 
         document
@@ -780,12 +744,6 @@
           .addEventListener("change", function () {
             toggleFdir();
           });
-
-        /*
-         * ========================================================
-         * CAMERA API
-         * ========================================================
-         */
 
         var canvas = document.getElementById("canvas");
 
@@ -795,18 +753,7 @@
 
         var zoomCam = Module.cwrap("zoom_camera", null, ["number"]);
 
-        /*
-         * Zachowuję jeden argument home_pos,
-         * tak jak w Twoim obecnym kodzie.
-         */
-
         var homeCam = Module.cwrap("home_pos", null, ["number"]);
-
-        /*
-         * ========================================================
-         * HOME
-         * ========================================================
-         */
 
         homeBtn.addEventListener("click", function (e) {
           e.preventDefault();
@@ -814,23 +761,6 @@
 
           homeCam();
         });
-
-        /*
-         * ========================================================
-         * ROTACJA + PINCH
-         * ========================================================
-         *
-         * 1 pointer:
-         *      obrót
-         *
-         * 2 pointers:
-         *      pinch zoom
-         *
-         * Pointer Events obsługują:
-         *      - mysz
-         *      - touch
-         *      - stylus
-         */
 
         var pointers = new Map();
 
@@ -842,10 +772,6 @@
         var pinchActive = false;
 
         var lastPinchDistance = 0;
-
-        /*
-         * Czułość pinch zoom.
-         */
 
         var PINCH_ZOOM_SENSITIVITY = 0.012;
 
@@ -869,10 +795,6 @@
           canvas.classList.remove("dragging");
         }
 
-        /*
-         * POINTER DOWN
-         */
-
         canvas.addEventListener("pointerdown", function (e) {
           pointers.set(e.pointerId, {
             x: e.clientX,
@@ -880,11 +802,6 @@
           });
 
           canvas.setPointerCapture(e.pointerId);
-
-          /*
-           * Jeden palec / mysz
-           * = przygotowanie rotacji.
-           */
 
           if (pointers.size === 1) {
             isRotating = true;
@@ -898,11 +815,6 @@
             canvas.classList.add("dragging");
           }
 
-          /*
-           * Drugi palec
-           * = pinch.
-           */
-
           if (pointers.size === 2) {
             stopRotation();
 
@@ -914,10 +826,6 @@
           e.preventDefault();
         });
 
-        /*
-         * POINTER MOVE
-         */
-
         canvas.addEventListener("pointermove", function (e) {
           if (!pointers.has(e.pointerId)) {
             return;
@@ -927,12 +835,6 @@
             x: e.clientX,
             y: e.clientY,
           });
-
-          /*
-           * ==================================================
-           * DWA PALCE = PINCH ZOOM
-           * ==================================================
-           */
 
           if (pointers.size >= 2) {
             if (!pinchActive) {
@@ -950,16 +852,6 @@
             if (lastPinchDistance > 0 && currentDistance > 0) {
               var distanceDelta = currentDistance - lastPinchDistance;
 
-              /*
-               * Rozsuwanie palców:
-               * distanceDelta > 0
-               * = zoom in
-               *
-               * Zsuwanie:
-               * distanceDelta < 0
-               * = zoom out
-               */
-
               var zoomAmount = -distanceDelta * PINCH_ZOOM_SENSITIVITY;
 
               if (Math.abs(zoomAmount) > 0.001) {
@@ -973,12 +865,6 @@
 
             return;
           }
-
-          /*
-           * ==================================================
-           * JEDEN PALec / MYSZ = ROTACJA
-           * ==================================================
-           */
 
           if (pointers.size === 1 && isRotating) {
             var dx = e.clientX - lastRotateX;
@@ -997,10 +883,6 @@
           }
         });
 
-        /*
-         * POINTER END
-         */
-
         function pointerEnd(e) {
           pointers.delete(e.pointerId);
 
@@ -1011,11 +893,6 @@
 
             lastPinchDistance = 0;
           } else if (pointers.size === 1) {
-            /*
-             * Po zakończeniu pinch
-             * wracamy do rotacji.
-             */
-
             pinchActive = false;
 
             var remaining = Array.from(pointers.values())[0];
@@ -1040,12 +917,6 @@
 
         canvas.addEventListener("pointercancel", pointerEnd);
 
-        /*
-         * ========================================================
-         * DESKTOP SCROLL = ZOOM
-         * ========================================================
-         */
-
         var WHEEL_ZOOM_STEP = 0.2;
 
         canvas.addEventListener(
@@ -1054,18 +925,8 @@
             e.preventDefault();
 
             if (e.deltaY < 0) {
-              /*
-               * Scroll up
-               * = zoom in
-               */
-
               zoomCam(-WHEEL_ZOOM_STEP);
             } else if (e.deltaY > 0) {
-              /*
-               * Scroll down
-               * = zoom out
-               */
-
               zoomCam(WHEEL_ZOOM_STEP);
             }
           },
@@ -1074,19 +935,21 @@
           },
         );
 
-        /*
-         * ========================================================
-         * RESIZE
-         * ========================================================
-         */
-
         if (typeof Module["_resizeViewport"] === "function") {
-          resizeViewportFn = Module.cwrap("resizeViewport", null, ["number"]);
+          /*
+           * resizeViewport(int w, int h)
+           */
+          resizeViewportFn = Module.cwrap("resizeViewport", null, [
+            "number",
+            "number",
+          ]);
+
+          var resizeTarget = document.getElementById("canvas");
 
           if (window.ResizeObserver) {
-            new ResizeObserver(resizeCanvasToDisplaySize).observe(
-              document.getElementById("canvas_shell"),
-            );
+            new ResizeObserver(function () {
+              requestAnimationFrame(resizeCanvasToDisplaySize);
+            }).observe(resizeTarget);
           } else {
             window.addEventListener("resize", resizeCanvasToDisplaySize);
 
@@ -1098,12 +961,12 @@
           resizeCanvasToDisplaySize();
         } else {
           console.warn(
-            "resizeViewport nie jest wyeksportowane w skompilowanym module — canvas zostaje w stałej rozdzielczości 1200x800 (skalowanej przez CSS).",
+            "resizeViewport nie jest wyeksportowane w skompilowanym module — viewport nie będzie dynamicznie dopasowywany.",
           );
         }
       };
     </script>
 
-    {{{ SCRIPT }}} ```
+    {{{ SCRIPT }}}
   </body>
 </html>
