@@ -216,7 +216,9 @@ EXPORT void rot_camera(float dx, float dy)
 
 EXPORT void zoom_camera(float d)
 {
-    eye_rad += d;
+    if (eye_rad + d < 1.5f * (planet_rad + base_h))
+        return;
+    eye_rad += d * eye_rad;
     update_vision = true;
 }
 

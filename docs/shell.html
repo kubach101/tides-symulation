@@ -1,0 +1,1109 @@
+<!doctype html>
+
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+
+    ```
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+
+    <title>Tidal Simulation</title>
+
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap");
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #000;
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+        height: 100dvh;
+
+        display: flex;
+        flex-direction: row-reverse;
+        justify-content: flex-start;
+        align-items: stretch;
+      }
+
+      * {
+        box-sizing: border-box;
+        user-select: none;
+        -webkit-user-drag: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      /*
+   * ============================================================
+   * CANVAS SHELL
+   * ============================================================
+   */
+
+      #canvas_shell {
+        position: relative;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        flex: 1 1 auto;
+
+        min-width: 0;
+        min-height: 0;
+
+        width: 100%;
+        height: 100%;
+      }
+
+      /*
+   * Wrapper ma dokładnie proporcje canvasu.
+   * Dzięki temu Home może być pozycjonowany względem
+   * faktycznego obszaru renderowania.
+   */
+
+      #canvas_wrapper {
+        position: relative;
+
+        width: min(100%, 150vh);
+        aspect-ratio: 3 / 2;
+
+        flex: 0 1 auto;
+
+        display: flex;
+        align-items: stretch;
+        justify-content: stretch;
+
+        min-width: 0;
+        min-height: 0;
+      }
+
+      canvas#canvas {
+        display: block;
+
+        width: 100%;
+        height: 100%;
+
+        max-width: 100%;
+        max-height: 100%;
+
+        touch-action: none;
+
+        cursor: grab;
+      }
+
+      canvas#canvas.dragging {
+        cursor: grabbing;
+      }
+
+      /*
+   * ============================================================
+   * HOME
+   * ============================================================
+   *
+   * Home jest częścią overlayu canvasu.
+   * Jest przyklejony do dolnej krawędzi canvasu.
+   *
+   * Rozmiar jest zależny od szerokości canvasu:
+   * clamp(min, szerokość canvasu, max)
+   */
+
+      #home {
+        position: absolute;
+
+        right: 2%;
+        bottom: 2%;
+
+        width: clamp(44px, 8%, 80px);
+        aspect-ratio: 1 / 1;
+
+        padding: 0;
+
+        display: grid;
+        place-items: center;
+
+        border: 3px solid #4a90d9;
+        border-radius: 12px;
+
+        background: rgba(0, 0, 0, 0.45);
+
+        cursor: pointer;
+
+        z-index: 10;
+
+        touch-action: manipulation;
+      }
+
+      #home:hover {
+        background: rgba(74, 144, 217, 0.2);
+      }
+
+      #home:active {
+        background: #4a90d9;
+      }
+
+      #home .icon {
+        width: 58%;
+        height: 58%;
+        max-width: 100%;
+        max-height: 100%;
+      }
+
+      /*
+   * ============================================================
+   * SIDEBAR
+   * ============================================================
+   */
+
+      .sidebar {
+        background: #2f2f2f;
+
+        height: 100%;
+
+        border: 4px solid #6f6f6f;
+
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+
+        padding: 12px;
+
+        font-family: "Open Sans", sans-serif;
+        color: #e0e0e0;
+
+        flex-shrink: 0;
+
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+
+        gap: 8px;
+      }
+
+      .control {
+        margin-bottom: 8px;
+      }
+
+      .control label {
+        display: flex;
+        justify-content: space-between;
+
+        font-size: 12px;
+
+        margin-bottom: 2px;
+      }
+
+      .control label span.value {
+        color: #9fd0ff;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .control input[type="range"] {
+        width: 100%;
+        accent-color: #4a90d9;
+      }
+
+      #reset_btn {
+        display: block;
+
+        width: 100%;
+
+        margin-bottom: 16px;
+        padding: 8px;
+
+        background: #3f3f3f;
+        color: #e0e0e0;
+
+        border: 1px solid #6f6f6f;
+        border-radius: 4px;
+
+        font-size: 13px;
+
+        cursor: pointer;
+      }
+
+      #reset_btn:hover {
+        background: #4a4a4a;
+      }
+
+      #reset_btn:active {
+        background: #333333;
+      }
+
+      .description {
+        font-size: 20px;
+        font-weight: bold;
+
+        margin-top: 4px;
+        margin-bottom: 8px;
+      }
+
+      .switch_row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+
+        margin-bottom: 8px;
+      }
+
+      .switch_row label.switch_label {
+        margin: 0;
+        font-size: 14px;
+      }
+
+      .switch {
+        position: relative;
+
+        display: inline-block;
+
+        width: 46px;
+        height: 24px;
+
+        flex-shrink: 0;
+      }
+
+      .switch input {
+        opacity: 0;
+
+        width: 0;
+        height: 0;
+      }
+
+      .slider {
+        position: absolute;
+
+        cursor: pointer;
+
+        inset: 0;
+
+        background-color: #3f3f3f;
+
+        border: 1px solid #6f6f6f;
+        border-radius: 24px;
+
+        transition:
+          background-color 0.2s ease,
+          border-color 0.2s ease;
+      }
+
+      .slider::before {
+        content: "";
+
+        position: absolute;
+
+        height: 16px;
+        width: 16px;
+
+        left: 3px;
+        top: 50%;
+
+        transform: translateY(-50%);
+
+        background-color: #e0e0e0;
+
+        border-radius: 50%;
+
+        transition: transform 0.2s ease;
+      }
+
+      .switch input:checked + .slider {
+        background-color: #4a90d9;
+        border-color: #4a90d9;
+      }
+
+      .switch input:checked + .slider::before {
+        transform: translateY(-50%) translateX(22px);
+      }
+
+      /*
+   * ============================================================
+   * MOBILE
+   * ============================================================
+   */
+
+      @media (max-width: 820px), (max-aspect-ratio: 4/5) {
+        html,
+        body {
+          flex-direction: column;
+
+          overflow: hidden;
+
+          width: 100%;
+          height: 100dvh;
+        }
+
+        #canvas_shell {
+          flex: 0 0 auto;
+
+          width: 100%;
+          height: auto;
+
+          display: flex;
+
+          align-items: stretch;
+          justify-content: stretch;
+        }
+
+        #canvas_wrapper {
+          width: 100%;
+          aspect-ratio: 3 / 2;
+
+          flex: 0 0 auto;
+        }
+
+        canvas#canvas {
+          width: 100%;
+          height: 100%;
+        }
+
+        #home {
+          right: 50%;
+          left: auto;
+          bottom: 2.5%;
+
+          width: clamp(44px, 12%, 64px);
+
+          border-width: 3px;
+          border-radius: 10px;
+        }
+
+        #home .icon {
+          width: 58%;
+          height: 58%;
+        }
+
+        .sidebar {
+          position: static;
+
+          flex: 1 1 auto;
+
+          min-height: 0;
+
+          width: 100% !important;
+
+          max-height: none;
+
+          border-left: none;
+          border-right: none;
+          border-bottom: none;
+
+          border-radius: 16px 16px 0 0;
+
+          padding-bottom: max(16px, env(safe-area-inset-bottom));
+
+          box-shadow: none;
+
+          transform: none;
+        }
+
+        .control label,
+        .switch_row label.switch_label {
+          font-size: 14px;
+        }
+
+        .control input[type="range"] {
+          height: 28px;
+        }
+
+        #reset_btn {
+          padding: 12px;
+          font-size: 15px;
+        }
+      }
+    </style>
+    ```
+  </head>
+
+  <body>
+    <div id="canvas_shell">
+      ```
+      <div id="canvas_wrapper">
+        <canvas
+          id="canvas"
+          width="1200"
+          height="800"
+          oncontextmenu="event.preventDefault()"
+        ></canvas>
+
+        <button id="home" type="button" aria-label="Home">
+          <img src="graphics/home.svg" alt="Home" class="icon" />
+        </button>
+      </div>
+    </div>
+
+    <div class="sidebar" style="width: 500px">
+      <div class="description">Simulation settings:</div>
+
+      <div class="switch_row">
+        <label for="toggle_fdir" class="switch_label">
+          Show force direction
+        </label>
+
+        <label class="switch">
+          <input type="checkbox" id="toggle_fdir" />
+
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="control">
+        <label for="planet_rad">
+          Planet radius [×10⁸ m]
+
+          <span class="value" id="planet_rad_val"> 0.06378 </span>
+        </label>
+
+        <input
+          type="range"
+          id="planet_rad"
+          min="0.006378"
+          max="0.121182"
+          step="0.0001"
+          value="0.06378"
+        />
+      </div>
+
+      <div class="control">
+        <label for="satelite_rad">
+          Satelite radius [×10⁸ m]
+
+          <span class="value" id="satelite_rad_val"> 0.017374 </span>
+        </label>
+
+        <input
+          type="range"
+          id="satelite_rad"
+          min="0.0017374"
+          max="0.0330106"
+          step="0.00001"
+          value="0.017374"
+        />
+      </div>
+
+      <div class="control">
+        <label for="ocean_height">
+          Ocean height [m]
+
+          <span class="value" id="ocean_height_val"> 3700 </span>
+        </label>
+
+        <input
+          type="range"
+          id="ocean_height"
+          min="370"
+          max="7030"
+          step="10"
+          value="3700"
+        />
+      </div>
+
+      <div class="control">
+        <label for="distance">
+          Distance sat-plan [×10⁸ m]
+
+          <span class="value" id="distance_val"> 3.85 </span>
+        </label>
+
+        <input
+          type="range"
+          id="distance"
+          min="0.385"
+          max="7.315"
+          step="0.01"
+          value="3.85"
+        />
+      </div>
+
+      <div class="control">
+        <label for="planet_mass">
+          Planet mass[×10²² kg]
+
+          <span class="value" id="planet_mass_val"> 597.2 </span>
+        </label>
+
+        <input
+          type="range"
+          id="planet_mass"
+          min="59.72"
+          max="1134.68"
+          step="1"
+          value="597.2"
+        />
+      </div>
+
+      <div class="control">
+        <label for="satelite_mass">
+          Satelite mass [×10²² kg]
+
+          <span class="value" id="satelite_mass_val"> 7.35 </span>
+        </label>
+
+        <input
+          type="range"
+          id="satelite_mass"
+          min="0.735"
+          max="13.965"
+          step="0.01"
+          value="7.35"
+        />
+      </div>
+
+      <div class="control">
+        <label for="ocean_scale">
+          Ocean scale
+
+          <span class="value" id="ocean_scale_val"> 200 </span>
+        </label>
+
+        <input
+          type="range"
+          id="ocean_scale"
+          min="20"
+          max="380"
+          step="1"
+          value="200"
+        />
+      </div>
+
+      <div class="control">
+        <label for="tide_scale">
+          Tide scale
+
+          <span class="value" id="tide_scale_val"> 1000000 </span>
+        </label>
+
+        <input
+          type="range"
+          id="tide_scale"
+          min="100000"
+          max="1900000"
+          step="1000"
+          value="1000000"
+        />
+      </div>
+
+      <div class="control">
+        <label for="time_scale">
+          Time scale
+
+          <span class="value" id="time_scale_val"> 100000 </span>
+        </label>
+
+        <input
+          type="range"
+          id="time_scale"
+          min="10000"
+          max="190000"
+          step="1000"
+          value="100000"
+        />
+      </div>
+
+      <button id="reset_btn" type="button">↺ Restore defaults</button>
+    </div>
+
+    <script>
+      var Module = {
+        canvas: document.getElementById("canvas"),
+      };
+
+      var DEFAULTS = {
+        planet_rad: 0.06378,
+        satelite_rad: 0.017374,
+        ocean_height: 3700,
+        distance: 3.85,
+        planet_mass: 597.2,
+        satelite_mass: 7.35,
+        ocean_scale: 200,
+        tide_scale: 1000000,
+        time_scale: 100000,
+      };
+
+      var SUPERSCRIPT = {
+        "-": "⁻",
+        0: "⁰",
+        1: "¹",
+        2: "²",
+        3: "³",
+        4: "⁴",
+        5: "⁵",
+        6: "⁶",
+        7: "⁷",
+        8: "⁸",
+        9: "⁹",
+      };
+
+      function formatExp(value) {
+        if (value === 0) {
+          return "0";
+        }
+
+        var exp = Math.floor(Math.log10(Math.abs(value)));
+
+        if (exp >= -1 && exp <= 4) {
+          var decimals = Math.max(0, Math.min(3, 2 - exp));
+
+          return value.toFixed(decimals);
+        }
+
+        var mantissa = value / Math.pow(10, exp);
+
+        if (Math.abs(mantissa) >= 9.995) {
+          mantissa /= 10;
+          exp += 1;
+        }
+
+        var expStr = String(exp)
+          .split("")
+          .map(function (c) {
+            return SUPERSCRIPT[c] || c;
+          })
+          .join("");
+
+        return mantissa.toFixed(2) + "×10" + expStr;
+      }
+
+      var resizeViewportFn = null;
+
+      function resizeCanvasToDisplaySize() {
+        if (!resizeViewportFn) {
+          return;
+        }
+
+        var canvas = document.getElementById("canvas");
+
+        if (!canvas) {
+          return;
+        }
+
+        var rect = canvas.getBoundingClientRect();
+
+        if (rect.width < 1 || rect.height < 1) {
+          return;
+        }
+
+        var isCoarsePointer =
+          window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+
+        var maxDpr = isCoarsePointer ? 1.5 : 2;
+
+        var dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
+
+        var w = Math.max(1, Math.round(rect.width * dpr));
+
+        var h = Math.max(1, Math.floor((w * 2) / 3));
+
+        if (canvas.width === w && canvas.height === h) {
+          return;
+        }
+
+        if (window.Browser && typeof Browser.setCanvasSize === "function") {
+          Browser.setCanvasSize(w, h);
+        } else {
+          canvas.width = w;
+          canvas.height = h;
+        }
+
+        try {
+          resizeViewportFn(w);
+        } catch (e) {
+          console.error("resizeViewport call failed:", e);
+        }
+      }
+
+      /*
+       * ============================================================
+       * EMSCRIPTEN
+       * ============================================================
+       */
+
+      Module.onRuntimeInitialized = function () {
+        var setters = {
+          planet_rad: Module.cwrap("set_planet_rad", null, ["number"]),
+
+          satelite_rad: Module.cwrap("set_satelite_rad", null, ["number"]),
+
+          distance: Module.cwrap("set_distance", null, ["number"]),
+
+          planet_mass: Module.cwrap("set_planet_mass", null, ["number"]),
+
+          satelite_mass: Module.cwrap("set_satelite_mass", null, ["number"]),
+
+          ocean_height: Module.cwrap("set_ocean_height", null, ["number"]),
+
+          ocean_scale: Module.cwrap("set_ocean_scale", null, ["number"]),
+
+          tide_scale: Module.cwrap("set_tide_scale", null, ["number"]),
+
+          time_scale: Module.cwrap("set_time_scale", null, ["number"]),
+        };
+
+        function applyValue(key, value) {
+          document.getElementById(key).value = value;
+
+          document.getElementById(key + "_val").textContent = formatExp(value);
+
+          setters[key](value);
+        }
+
+        Object.keys(setters).forEach(function (key) {
+          var input = document.getElementById(key);
+
+          applyValue(key, DEFAULTS[key]);
+
+          input.addEventListener("input", function () {
+            applyValue(key, parseFloat(input.value));
+          });
+        });
+
+        document
+          .getElementById("reset_btn")
+          .addEventListener("click", function () {
+            Object.keys(setters).forEach(function (key) {
+              applyValue(key, DEFAULTS[key]);
+            });
+          });
+
+        /*
+         * ========================================================
+         * FORCE DIRECTION
+         * ========================================================
+         */
+
+        var toggleFdir = Module.cwrap("toggle_fdir", null, []);
+
+        document
+          .getElementById("toggle_fdir")
+          .addEventListener("change", function () {
+            toggleFdir();
+          });
+
+        /*
+         * ========================================================
+         * CAMERA API
+         * ========================================================
+         */
+
+        var canvas = document.getElementById("canvas");
+
+        var homeBtn = document.getElementById("home");
+
+        var rotCam = Module.cwrap("rot_camera", null, ["number", "number"]);
+
+        var zoomCam = Module.cwrap("zoom_camera", null, ["number"]);
+
+        /*
+         * Zachowuję jeden argument home_pos,
+         * tak jak w Twoim obecnym kodzie.
+         */
+
+        var homeCam = Module.cwrap("home_pos", null, ["number"]);
+
+        /*
+         * ========================================================
+         * HOME
+         * ========================================================
+         */
+
+        homeBtn.addEventListener("click", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          homeCam();
+        });
+
+        /*
+         * ========================================================
+         * ROTACJA + PINCH
+         * ========================================================
+         *
+         * 1 pointer:
+         *      obrót
+         *
+         * 2 pointers:
+         *      pinch zoom
+         *
+         * Pointer Events obsługują:
+         *      - mysz
+         *      - touch
+         *      - stylus
+         */
+
+        var pointers = new Map();
+
+        var isRotating = false;
+
+        var lastRotateX = 0;
+        var lastRotateY = 0;
+
+        var pinchActive = false;
+
+        var lastPinchDistance = 0;
+
+        /*
+         * Czułość pinch zoom.
+         */
+
+        var PINCH_ZOOM_SENSITIVITY = 0.012;
+
+        function getPinchDistance() {
+          var values = Array.from(pointers.values());
+
+          if (values.length < 2) {
+            return 0;
+          }
+
+          var dx = values[0].x - values[1].x;
+
+          var dy = values[0].y - values[1].y;
+
+          return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        function stopRotation() {
+          isRotating = false;
+
+          canvas.classList.remove("dragging");
+        }
+
+        /*
+         * POINTER DOWN
+         */
+
+        canvas.addEventListener("pointerdown", function (e) {
+          pointers.set(e.pointerId, {
+            x: e.clientX,
+            y: e.clientY,
+          });
+
+          canvas.setPointerCapture(e.pointerId);
+
+          /*
+           * Jeden palec / mysz
+           * = przygotowanie rotacji.
+           */
+
+          if (pointers.size === 1) {
+            isRotating = true;
+
+            pinchActive = false;
+
+            lastRotateX = e.clientX;
+
+            lastRotateY = e.clientY;
+
+            canvas.classList.add("dragging");
+          }
+
+          /*
+           * Drugi palec
+           * = pinch.
+           */
+
+          if (pointers.size === 2) {
+            stopRotation();
+
+            pinchActive = true;
+
+            lastPinchDistance = getPinchDistance();
+          }
+
+          e.preventDefault();
+        });
+
+        /*
+         * POINTER MOVE
+         */
+
+        canvas.addEventListener("pointermove", function (e) {
+          if (!pointers.has(e.pointerId)) {
+            return;
+          }
+
+          pointers.set(e.pointerId, {
+            x: e.clientX,
+            y: e.clientY,
+          });
+
+          /*
+           * ==================================================
+           * DWA PALCE = PINCH ZOOM
+           * ==================================================
+           */
+
+          if (pointers.size >= 2) {
+            if (!pinchActive) {
+              pinchActive = true;
+
+              lastPinchDistance = getPinchDistance();
+
+              stopRotation();
+
+              return;
+            }
+
+            var currentDistance = getPinchDistance();
+
+            if (lastPinchDistance > 0 && currentDistance > 0) {
+              var distanceDelta = currentDistance - lastPinchDistance;
+
+              /*
+               * Rozsuwanie palców:
+               * distanceDelta > 0
+               * = zoom in
+               *
+               * Zsuwanie:
+               * distanceDelta < 0
+               * = zoom out
+               */
+
+              var zoomAmount = -distanceDelta * PINCH_ZOOM_SENSITIVITY;
+
+              if (Math.abs(zoomAmount) > 0.001) {
+                zoomCam(zoomAmount);
+              }
+            }
+
+            lastPinchDistance = currentDistance;
+
+            e.preventDefault();
+
+            return;
+          }
+
+          /*
+           * ==================================================
+           * JEDEN PALec / MYSZ = ROTACJA
+           * ==================================================
+           */
+
+          if (pointers.size === 1 && isRotating) {
+            var dx = e.clientX - lastRotateX;
+
+            var dy = e.clientY - lastRotateY;
+
+            if (dx !== 0 || dy !== 0) {
+              rotCam(dx, dy);
+            }
+
+            lastRotateX = e.clientX;
+
+            lastRotateY = e.clientY;
+
+            e.preventDefault();
+          }
+        });
+
+        /*
+         * POINTER END
+         */
+
+        function pointerEnd(e) {
+          pointers.delete(e.pointerId);
+
+          if (pointers.size === 0) {
+            stopRotation();
+
+            pinchActive = false;
+
+            lastPinchDistance = 0;
+          } else if (pointers.size === 1) {
+            /*
+             * Po zakończeniu pinch
+             * wracamy do rotacji.
+             */
+
+            pinchActive = false;
+
+            var remaining = Array.from(pointers.values())[0];
+
+            lastRotateX = remaining.x;
+
+            lastRotateY = remaining.y;
+
+            isRotating = true;
+
+            canvas.classList.add("dragging");
+          }
+
+          try {
+            canvas.releasePointerCapture(e.pointerId);
+          } catch (err) {}
+
+          e.preventDefault();
+        }
+
+        canvas.addEventListener("pointerup", pointerEnd);
+
+        canvas.addEventListener("pointercancel", pointerEnd);
+
+        /*
+         * ========================================================
+         * DESKTOP SCROLL = ZOOM
+         * ========================================================
+         */
+
+        var WHEEL_ZOOM_STEP = 0.2;
+
+        canvas.addEventListener(
+          "wheel",
+          function (e) {
+            e.preventDefault();
+
+            if (e.deltaY < 0) {
+              /*
+               * Scroll up
+               * = zoom in
+               */
+
+              zoomCam(-WHEEL_ZOOM_STEP);
+            } else if (e.deltaY > 0) {
+              /*
+               * Scroll down
+               * = zoom out
+               */
+
+              zoomCam(WHEEL_ZOOM_STEP);
+            }
+          },
+          {
+            passive: false,
+          },
+        );
+
+        /*
+         * ========================================================
+         * RESIZE
+         * ========================================================
+         */
+
+        if (typeof Module["_resizeViewport"] === "function") {
+          resizeViewportFn = Module.cwrap("resizeViewport", null, ["number"]);
+
+          if (window.ResizeObserver) {
+            new ResizeObserver(resizeCanvasToDisplaySize).observe(
+              document.getElementById("canvas_shell"),
+            );
+          } else {
+            window.addEventListener("resize", resizeCanvasToDisplaySize);
+
+            window.addEventListener("orientationchange", function () {
+              setTimeout(resizeCanvasToDisplaySize, 200);
+            });
+          }
+
+          resizeCanvasToDisplaySize();
+        } else {
+          console.warn(
+            "resizeViewport nie jest wyeksportowane w skompilowanym module — canvas zostaje w stałej rozdzielczości 1200x800 (skalowanej przez CSS).",
+          );
+        }
+      };
+    </script>
+
+    {{{ SCRIPT }}} ```
+  </body>
+</html>
