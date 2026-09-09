@@ -428,7 +428,7 @@ int main()
     deviation = 15.0f / 180.0f * M_PI;
     aspect = (float)width / (float)height;
 
-    indicator_size = floor((width + height) / 2 * 0.15f);
+    indicator_size = floor((width + height) / 2 * 0.3f);
 
 #ifndef __EMSCRIPTEN__
     char ans = '\0';
