@@ -392,7 +392,7 @@
     #open-tutorial {
       position: absolute;
 
-      right: 2%;
+      left: 2%;
       bottom: 2%;
 
       width: clamp(44px, 8%, 80px);
@@ -403,7 +403,7 @@
       display: grid;
       place-items: center;
 
-      border: 3px solid #4a90d9;
+      border: 3px solid #4caf50;
       border-radius: 12px;
 
       background: rgba(0, 0, 0, 0.45);
@@ -413,6 +413,21 @@
       z-index: 10;
 
       touch-action: manipulation;
+    }
+
+    #open-tutorial:hover {
+      background: rgba(76, 175, 80, 0.2);
+    }
+
+    #open-tutorial:active {
+      background: #4caf50;
+    }
+
+    #open-tutorial .icon {
+      width: 58%;
+      height: 58%;
+      max-width: 100%;
+      max-height: 100%;
     }
 
     @media (max-width: 820px),
@@ -471,6 +486,17 @@
       #home .icon {
         width: 58%;
         height: 58%;
+      }
+
+      #open-tutorial {
+        left: auto;
+        right: 2%;
+        bottom: 2.5%;
+
+        width: clamp(44px, 12%, 64px);
+
+        border-width: 3px;
+        border-radius: 10px;
       }
 
       .sidebar {
@@ -532,6 +558,10 @@
 
       <button id="home" type="button" aria-label="Home">
         <img src="graphics/home.svg" alt="Home" class="icon" />
+      </button>
+
+      <button id="open-tutorial" type="button" aria-label="Tutorial">
+        <img src="graphics/info.svg" alt="Info" class="icon" />
       </button>
     </div>
   </div>
@@ -1095,7 +1125,7 @@
       .getElementById("close-tutorial")
       .addEventListener("click", () => closeTutorial());
     document
-      .getElementsByClassName("open-tutorial")
+      .getElementById("open-tutorial")
       .addEventListener("click", () => openTutorial());
   </script>
 
